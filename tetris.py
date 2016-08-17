@@ -1,5 +1,6 @@
 import os
 import sys
+import copy
 
 # clear the screen for drawing
 clear = lambda: os.system('cls' if os.name=='nt' else 'clear')
@@ -17,12 +18,20 @@ BLOCKS = {
 class UnexpectedInput(Exception):
     pass
 
+class IllegalMove(Exception):
+    pass
+
 class Tetris(object):
     def __init__(self):
-        self.board = [[0]*20]*20 ## init empty board 20x20
+        self.board = []## init empty board 20x20
+        for i in range(20):
+            self.board.append([4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,])
+        self.board.append([2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2])
         self.block = 4
-        self.x = 0
+        self.x = 1
         self.y = 0
+        self.output_board = copy.deepcopy(self.board)
+        self.eog = False
 
     ## operations on the blocks
     def rotate_clockwise(self, block):
@@ -43,23 +52,47 @@ class Tetris(object):
             raise UnexpectedInput, 'Your move is invalid \nValid moves are:\n a - left\n d - right\n s - rotate clockwise\n w - rotate counter clockwise)\n'
         return move
 
-    def read_move(self, valid_move = None):
-        while not valid_move:
-            try:
-                valid_move = self.validate_input(raw_input('Make a move: '))
-            except UnexpectedInput, e:
-                write(e)
-        return valid_move
+    def play(self, valid_move = None):
+        self.calculate_board()
+        self.draw_board()
+        while not self.eog:
+            while not valid_move:
+                try:
+                    valid_move = self.validate_input(raw_input('Make a move: '))
+                    self.calculate_board(valid_move)
+                except UnexpectedInput, e:
+                    write(e)
+                except IllegalMove, e:
+                    write(e)
+            self.draw_board()
+            valid_move = None
+
+    def get_random_x(self):
+        return 5 ## TODO: randomize starting location
+
+    def calculate_board(self, valid_move = None):
+        if valid_move:
+            self.output_board = copy.deepcopy(self.board)
+            self.y += 1
+            if valid_move == 'a':
+                self.x -= 1
+            if valid_move == 'd':
+                self.x += 1
+        block = BLOCKS[self.block]
+        for i in range(len(block)):
+            for j in range(len(block[0])):
+                self.output_board[self.y+i][self.x+j] = self.board[self.y+i][self.x+j]+block[i][j]
+        if 5 in self.output_board:
+            raise IllegalMove, 'Cannot move on the border'
+        if 3 in self.output_board:
+            pass
 
     def draw_board(self):
         clear()
-        for i in range(21):
-            write('*')
-            for j in range(20):
-                write('*' if i==20 else ' ')
-            write('*\n')
+        for i in range(21): # for each row
+            for j in range(22): # for each column
+                write(str(self.output_board[i][j]) if self.output_board[i][j] > 0 else ' ') # FIXME: change print to *
+            write('\n')
 
 if __name__=='__main__':
-    t = Tetris()
-    t.draw_board()
-    t.read_move()
+    Tetris().play()
